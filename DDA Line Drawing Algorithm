@@ -1,0 +1,90 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <cmath>
+
+using namespace std;
+
+// Global variables for the coordinates
+int x1, startY, x2, endY;  // Renamed y1 to startY and y2 to endY
+
+// Function to draw a pixel at (x, y) with a specified color
+void drawPixel(int x, int y) {
+    glBegin(GL_POINTS);
+    glVertex2i(x, y);
+    glEnd();
+}
+
+// DDA Line Drawing Algorithm
+void drawLine(int x1, int startY, int x2, int endY) {
+    int dx = x2 - x1;
+    int dy = endY - startY;
+
+    int steps = max(abs(dx), abs(dy)); // Determine the number of steps needed
+
+    float xIncrement = dx / (float)steps; // Calculate the increment for x
+    float yIncrement = dy / (float)steps; // Calculate the increment for y
+
+    float x = x1; // Initialize starting point
+    float y = startY;
+
+    // Draw the line pixel by pixel
+    for (int i = 0; i <= steps; i++) {
+        drawPixel(round(x), round(y)); // Draw the pixel
+        x += xIncrement;              // Update x
+        y += yIncrement;              // Update y
+    }
+}
+
+// OpenGL display function
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
+
+    // Debugging: Output the coordinates
+    cout << "Drawing line from (" << x1 << ", " << startY << ") to (" << x2 << ", " << endY << ")" << endl;
+
+    // Draw lines using the DDA algorithm with the user input coordinates
+    drawLine(x1, startY, x2, endY);   // Correct the parameter names here
+
+    glFlush(); // Ensure all OpenGL commands are executed
+}
+
+// OpenGL initialization function
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0); // Set the background color to black
+    glColor3f(1.0, 1.0, 1.0);         // Set the drawing color to white
+    glPointSize(4.0);                 // Increase point size to make it visible
+    glOrtho(0.0, 500.0, 0.0, 500.0, -1.0, 1.0);  // Set the coordinate system (2D orthographic projection)
+}
+
+// Main function
+int main(int argc, char** argv) {
+    // Ask the user for input before opening the OpenGL window
+    cout << "Enter the starting point (x1, startY): ";
+    cin >> x1 >> startY;  // Use startY instead of y1
+    cout << "Enter the ending point (x2, endY): ";
+    cin >> x2 >> endY;   // Use endY instead of y2
+
+    // Check if the input coordinates are within the range of the window
+    if (x1 < 0 || x1 > 500 || startY < 0 || startY > 500 || x2 < 0 || x2 > 500 || endY < 0 || endY > 500) {
+        cout << "Error: Coordinates must be between 0 and 500." << endl;
+        return 1;  // Exit the program if coordinates are out of range
+    }
+
+    // Now initialize GLUT and create the window
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("DDA Line Drawing Algorithm");
+
+    // Initialize OpenGL settings
+    init();
+
+    // Set up the display function
+    glutDisplayFunc(display);
+
+    // Enter the GLUT event processing loop
+    glutMainLoop();
+
+    return 0;
+}
