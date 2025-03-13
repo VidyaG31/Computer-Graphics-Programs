@@ -1,0 +1,279 @@
+#include <GL/glut.h>
+#include <iostream>
+#include <vector>
+#include <cmath>
+
+using namespace std;
+
+// Global variables for circle parameters
+int xc, yc, radius;
+vector<pair<int, pair<int, int>>> points; // Stores (colorIndex, x, y) for each point
+vector<pair<int, pair<int, int>>> intersectionPoints; // Stores the intersection points of circle and lines
+int currentIndex = 0;                     // Index for the current point to be displayed
+
+// Function to set color based on octant
+void setColor(int octant) {
+    switch (octant) {
+        case 1: glColor3f(1.0, 0.0, 0.0); break; // Red
+        case 2: glColor3f(0.0, 1.0, 0.0); break; // Green
+        case 3: glColor3f(0.0, 0.0, 1.0); break; // Blue
+        case 4: glColor3f(1.0, 1.0, 0.0); break; // Yellow
+        case 5: glColor3f(1.0, 0.0, 1.0); break; // Magenta
+        case 6: glColor3f(0.0, 1.0, 1.0); break; // Cyan
+        case 7: glColor3f(1.0, 0.5, 0.0); break; // Orange
+        case 8: glColor3f(0.5, 0.0, 1.0); break; // Purple
+    }
+}
+
+// Function to plot a pixel and assign it to the appropriate octant
+void plotSymmetryPoints(int x, int y) {
+    points.push_back({1, {xc + x, yc + y}}); // Octant 1
+    points.push_back({2, {xc - x, yc + y}}); // Octant 2
+    points.push_back({3, {xc + x, yc - y}}); // Octant 3
+    points.push_back({4, {xc - x, yc - y}}); // Octant 4
+    points.push_back({5, {xc + y, yc + x}}); // Octant 5
+    points.push_back({6, {xc - y, yc + x}}); // Octant 6
+    points.push_back({7, {xc + y, yc - x}}); // Octant 7
+    points.push_back({8, {xc - y, yc - x}}); // Octant 8
+}
+
+// Function to calculate the intersection points of the circle and the lines in each octant
+void calculateIntersectionPoints() {
+    for (int angle = 0; angle < 360; angle += 45) {  // Check for lines at multiples of 45 degrees
+        float radian = angle * (M_PI / 180.0);
+        int x = radius * cos(radian);
+        int y = radius * sin(radian);
+        intersectionPoints.push_back({0, {xc + x, yc + y}});
+    }
+}
+
+// Midpoint Circle Algorithm
+void midpointCircleAlgorithm() {
+    int x = 0;
+    int y = radius;
+    int p = 1 - radius; // Initial decision parameter
+
+    plotSymmetryPoints(x, y); // Plot the first point (0, r)
+
+    while (x < y) {
+        x++;
+        if (p < 0) {
+            p += 2 * x + 1; // Midpoint is inside the circle
+        } else {
+            y--;
+            p += 2 * (x - y) + 1; // Midpoint is outside the circle
+        }
+        plotSymmetryPoints(x, y); // Store all 8 symmetric points
+    }
+
+    calculateIntersectionPoints();  // Calculate and store the intersection points
+}
+
+    // Function to draw the axes and diagonal lines separating the octants with arrows
+void drawAxes() {
+    glColor3f(1.0, 1.0, 1.0); // White color for axes
+
+    // Draw the x-axis (horizontal line) passing through the center
+    glBegin(GL_LINES);
+    glVertex2i(xc - radius - 50, yc ); // Left part of x-axis
+    glVertex2i(xc + radius + 50, yc ); // Right part of x-axis
+    glEnd();
+
+    // Draw the y-axis (vertical line) passing through the center
+    glBegin(GL_LINES);
+    glVertex2i(xc, yc - radius - 50); // Bottom part of y-axis
+    glVertex2i(xc, yc + radius + 50); // Top part of y-axis
+    glEnd();
+
+    // Draw the first diagonal line separating the octants
+    glBegin(GL_LINES);
+    glVertex2i(xc - radius - 50, yc - radius - 50); // Bottom-left
+    glVertex2i(xc + radius + 50, yc + radius + 50); // Top-right
+    glEnd();
+
+    // Draw the second diagonal line separating the octants
+    glBegin(GL_LINES);
+    glVertex2i(xc - radius - 50, yc + radius + 50); // Top-left
+    glVertex2i(xc + radius + 50, yc - radius - 50); // Bottom-right
+    glEnd();
+
+    // Draw arrows at the ends of all four lines to indicate infinity
+    glBegin(GL_TRIANGLES);
+
+    // Arrow for x-axis (right direction)
+    glVertex2i(xc + radius + 50, yc);
+    glVertex2i(xc + radius + 40, yc + 10);
+    glVertex2i(xc + radius + 40, yc - 10);
+
+    // Arrow for x-axis (left direction)
+    glVertex2i(xc - radius - 50, yc);
+    glVertex2i(xc - radius - 40, yc + 10);
+    glVertex2i(xc - radius - 40, yc - 10);
+
+    // Arrow for y-axis (up direction)
+    glVertex2i(xc, yc + radius + 50);
+    glVertex2i(xc + 10, yc + radius + 40);
+    glVertex2i(xc - 10, yc + radius + 40);
+
+    // Arrow for y-axis (down direction)
+    glVertex2i(xc, yc - radius - 50);
+    glVertex2i(xc + 10, yc - radius - 40);
+    glVertex2i(xc - 10, yc - radius - 40);
+
+    // Arrow for 1st diagonal (top-right direction)
+    glVertex2i(xc + radius + 50, yc + radius + 40);
+    glVertex2i(xc + radius + 50, yc + radius + 50);
+    glVertex2i(xc + radius + 40, yc + radius + 50);
+
+    // Arrow for 1st diagonal (bottom-left direction)
+    glVertex2i(xc - radius - 50, yc - radius - 40);
+    glVertex2i(xc - radius - 50, yc - radius - 50);
+    glVertex2i(xc - radius - 40, yc - radius - 50);
+
+    // Arrow for 2nd diagonal (top-left direction)
+    glVertex2i(xc - radius - 50, yc + radius + 40);
+    glVertex2i(xc - radius - 50, yc + radius + 50);
+    glVertex2i(xc - radius - 40, yc + radius + 50);
+
+    // Arrow for 2nd diagonal (bottom-right direction)
+    glVertex2i(xc + radius + 50, yc - radius - 40);
+    glVertex2i(xc + radius + 50, yc - radius - 50);
+    glVertex2i(xc + radius + 40, yc - radius - 50);
+
+    glEnd();
+
+
+}
+
+// Function to add a number line with labels to x and y axes
+void drawNumberLines() {
+    glColor3f(1.0, 1.0, 1.0); // White color for text
+
+    // Draw numbers along the X-axis
+    for (int x = xc - radius - 50; x <= xc + radius + 50; x += 50) {
+        if (x == xc) continue; // Skip the center point
+        glRasterPos2i(x, yc - 15); // Position numbers slightly below the X-axis
+        string number = to_string(x - xc); // Calculate the offset from the origin
+        for (char c : number) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
+        }
+    }
+
+    // Draw numbers along the Y-axis
+    for (int y = yc - radius - 50; y <= yc + radius + 50; y += 50) {
+        if (y == yc) continue; // Skip the center point
+        glRasterPos2i(xc + 5, y); // Position numbers slightly right of the Y-axis
+        string number = to_string(y - yc); // Calculate the offset from the origin
+        for (char c : number) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
+        }
+    }
+}
+
+
+
+// Function to draw the points one by one with animation
+void drawNextPoint(int value) {
+    if (currentIndex < points.size()) {
+        // Set the color based on the octant
+        setColor(points[currentIndex].first);
+
+        // Draw the current point
+        glBegin(GL_POINTS);
+        glVertex2i(points[currentIndex].second.first, points[currentIndex].second.second);
+        glEnd();
+        glFlush();
+
+        currentIndex++; // Move to the next point
+        glutTimerFunc(50, drawNextPoint, 0); // Call this function again after 50ms
+    }
+}
+
+// Function to label the x and y axes
+void labelAxes() {
+    // Label for the x-axis
+    glColor3f(1.0, 1.0, 1.0); // White color for text
+    glRasterPos2i(xc + radius + 60, yc); // Position the label
+    const char* labelX = "X-axis";
+    while (*labelX) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *labelX++);
+    }
+
+    // Label for the y-axis
+    glRasterPos2i(xc, yc + radius + 60); // Position the label
+    const char* labelY = "Y-axis";
+    while (*labelY) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *labelY++);
+    }
+}
+
+// Function to display intersection points
+void drawIntersectionPoints() {
+    glColor3f(1.0, 1.0, 1.0); // White color for intersection points
+    glBegin(GL_POINTS);
+    for (auto& pt : intersectionPoints) {
+        glVertex2i(pt.second.first, pt.second.second); // Draw intersection points
+    }
+    glEnd();
+
+    // Display coordinates of the intersection points
+    glColor3f(1.0, 1.0, 1.0); // White color for text
+    for (auto& pt : intersectionPoints) {
+        glRasterPos2i(pt.second.first + 5, pt.second.second + 5); // Position the label
+        string coordinate = "(" + to_string(pt.second.first) + ", " + to_string(pt.second.second) + ")";
+        for (char c : coordinate) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, c);
+        }
+    }
+}
+
+
+// Display function for OpenGL
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
+    drawAxes();
+    drawNumberLines();                  // Draw the axis lines with arrows
+    labelAxes();                  // Draw labels for the x and y axes
+    drawIntersectionPoints();     // Draw the intersection points and their coordinates
+    glFlush();                    // Ensure the screen is refreshed
+    currentIndex = 0;             // Reset the animation
+    glutTimerFunc(0, drawNextPoint, 0); // Start drawing points
+}
+
+// Initialization function for OpenGL
+void init() {
+    glClearColor(0.0, 0.0, 0.0, 1.0); // Set the background color to black
+    glPointSize(4.0);                 // Set the point size
+    glOrtho(0.0, 500.0, 0.0, 500.0, -1.0, 1.0);  // Set the coordinate system (2D orthographic projection)
+}
+
+int main(int argc, char** argv) {
+    // Ask the user for input before opening the OpenGL window
+    cout << "Enter the coordinates of the circle center (xc, yc): ";
+    cin >> xc >> yc;
+    cout << "Enter the radius of the circle: ";
+    cin >> radius;
+
+    // Check if the input parameters are within the window range
+    if (xc < 0 || xc > 500 || yc < 0 || yc > 500 || radius <= 0 || xc + radius > 500 || yc + radius > 500) {
+        cout << "Error: Coordinates and radius must be within the range of 0 to 500." << endl;
+        return 1; // Exit the program if input is invalid
+    }
+
+    // Generate points using the Midpoint Circle Algorithm
+    midpointCircleAlgorithm();
+
+    // Initialize GLUT and create the window
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutInitWindowPosition(100, 100);
+    glutCreateWindow("Octant Animation in Midpoint Circle Drawing");
+
+
+    init(); // Initialize OpenGL settings
+    glutDisplayFunc(display); // Register the display function
+    glutMainLoop(); // Start the main loop
+
+    return 0;
+}
