@@ -1,0 +1,123 @@
+#include <GL/glut.h>
+#include <iostream>
+
+using namespace std;
+
+// Clipping window boundaries
+double x_min = 150, y_min = 150, x_max = 350, y_max = 350;
+double x1, y1, x2, y2;
+bool isFirstClick = true, showClippedLine = false, drawLine = false;
+
+// Liang-Barsky Clipping Algorithm
+bool liangBarskyClip(double& x1, double& y1, double& x2, double& y2) {
+    double dx = x2 - x1, dy = y2 - y1;
+    double t0 = 0.0, t1 = 1.0;
+
+    double p[4] = { -dx, dx, -dy, dy };
+    double q[4] = { x1 - x_min, x_max - x1, y1 - y_min, y_max - y1 };
+
+    for (int i = 0; i < 4; i++) {
+        if (p[i] == 0 && q[i] < 0) return false;  // Line is parallel and outside
+
+        double t = q[i] / p[i];
+        if (p[i] < 0) {
+            if (t > t0) t0 = t;
+        } else if (p[i] > 0) {
+            if (t < t1) t1 = t;
+        }
+        if (t0 > t1) return false;  // Line is completely outside
+    }
+
+    // Update clipped coordinates
+    x2 = x1 + t1 * dx;
+    y2 = y1 + t1 * dy;
+    x1 = x1 + t0 * dx;
+    y1 = y1 + t0 * dy;
+
+    return true;
+}
+
+// Mouse Click Handler
+void mouseClick(int button, int state, int mx, int my) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        if (isFirstClick) {
+            x1 = mx;
+            y1 = 500 - my;  // Flip y-coordinates
+            isFirstClick = false;
+        } else {
+            x2 = mx;
+            y2 = 500 - my;  // Flip y-coordinates
+            isFirstClick = true;
+            showClippedLine = false;
+            drawLine = true;
+            glutPostRedisplay();
+        }
+    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        if (liangBarskyClip(x1, y1, x2, y2)) {
+            showClippedLine = true;
+            drawLine = true;
+        } else {
+            drawLine = false;  // Remove the line completely if outside
+        }
+        glutPostRedisplay();
+    }
+}
+
+// Draw the Clipping Window
+void drawClippingWindow() {
+    glColor3f(1.0, 1.0, 1.0);  // White color
+    glBegin(GL_LINE_LOOP);
+    glVertex2i(x_min, y_min);
+    glVertex2i(x_max, y_min);
+    glVertex2i(x_max, y_max);
+    glVertex2i(x_min, y_max);
+    glEnd();
+}
+
+// Display function
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+    drawClippingWindow();
+
+    // Draw original line before clipping
+    if (drawLine) {
+        glColor3f(0.0, 1.0, 0.0);  // Green color
+        glBegin(GL_LINES);
+        glVertex2i(x1, y1);
+        glVertex2i(x2, y2);
+        glEnd();
+    }
+
+    // Draw clipped line
+    if (showClippedLine) {
+        glColor3f(1.0, 0.0, 0.0);  // Red color
+        glBegin(GL_LINES);
+        glVertex2i(x1, y1);
+        glVertex2i(x2, y2);
+        glEnd();
+    }
+
+    glFlush();
+}
+
+// Initialization
+void init() {
+    glClearColor(0, 0, 0, 1);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(0, 500, 0, 500);
+}
+
+// Main Function
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+    glutInitWindowSize(500, 500);
+    glutCreateWindow("Liang-Barsky Line Clipping");
+
+    init();
+    glutDisplayFunc(display);
+    glutMouseFunc(mouseClick);
+    glutMainLoop();
+    return 0;
+}
